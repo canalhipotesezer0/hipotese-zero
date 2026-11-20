@@ -79,7 +79,14 @@ video{width:100%;max-width:300px;border-radius:10px;background:#000}
 
 <footer class="muted" style="margin-top:32px">Contato: canal.hipotese.zer0@gmail.com · <a href="termos.html">Termos de Uso</a> · <a href="privacidade.html">Política de Privacidade</a></footer>
 </main>
-<script src="config.js"></script>
+<script>
+window.HZ_CONFIG = {
+  CLIENT_KEY: "sbawji2m4f6j69g7zn",
+  REDIRECT_URI: "https://canalhipotesezer0.github.io/hipotese-zero/",
+  SCOPES: "user.info.basic,video.upload,video.publish",
+  SERVER_URL: "https://script.google.com/macros/s/AKfycbx3W6lVFGcvgWiZKKKbpr_-7GHOoBK2dJhB39ufglDSRnhROI8YsQGlJfoZiE5JC4QD/exec"
+};
+</script>
 <script>
 const C = window.HZ_CONFIG, $ = id => document.getElementById(id);
 let creator = null, videos = [];
