@@ -1,0 +1,7 @@
+// Preencha SERVER_URL com o endereço da implantação do Google Apps Script (termina em /exec).
+window.HZ_CONFIG = {
+  CLIENT_KEY: "sbawji2m4f6j69g7zn",
+  REDIRECT_URI: "https://canalhipotesezer0.github.io/hipotese-zero/",
+  SCOPES: "user.info.basic,video.upload,video.publish",
+  SERVER_URL: "https://script.google.com/macros/s/AKfycbx3W6lVFGcvgWiZKKKbpr_-7GHOoBK2dJhB39ufglDSRnhROI8YsQGlJfoZiE5JC4QD/exec"
+};

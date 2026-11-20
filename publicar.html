@@ -1,0 +1,206 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Post to TikTok – Hipótese Zero</title>
+<style>
+body{margin:0;background:#0b0f1a;color:#e8ecf3;font:16px/1.5 system-ui,Segoe UI,Roboto,sans-serif}
+main{max-width:760px;margin:0 auto;padding:32px 16px}a{color:#FFD400}
+header{display:flex;align-items:center;gap:14px;margin-bottom:12px}header img{width:56px;height:56px;border-radius:50%}
+nav{display:flex;gap:18px;flex-wrap:wrap;margin:8px 0 24px}
+.card{background:#141a2a;border:1px solid #25304a;border-radius:12px;padding:18px;margin:16px 0}
+button{background:#FE2C55;color:#fff;border:0;border-radius:8px;padding:12px 20px;font-size:16px;font-weight:600;cursor:pointer}
+button[disabled]{opacity:.45;cursor:not-allowed}button.sec{background:#2a3550}
+label{display:block;margin:10px 0 4px;font-weight:600}
+select,textarea{width:100%;box-sizing:border-box;background:#0b0f1a;color:#e8ecf3;border:1px solid #33405e;border-radius:8px;padding:10px;font:inherit}
+.row{display:flex;gap:18px;flex-wrap:wrap}.row label{font-weight:400;display:flex;gap:8px;align-items:center;margin:6px 0}
+.muted{color:#9aa3b2;font-size:14px}.err{color:#ff6b81}.ok{color:#5ee08a}
+.creator{display:flex;align-items:center;gap:12px}.creator img{width:48px;height:48px;border-radius:50%}
+video{width:100%;max-width:300px;border-radius:10px;background:#000}
+.hidden{display:none}
+</style></head><body><main>
+<header><img src="logo.png" alt=""><div><strong>Hipótese Zero</strong><br><span class="muted">Hipótese Zero Uploader</span></div></header>
+<nav><a href="./">Início</a><a href="publicar.html">Post to TikTok</a><a href="termos.html">Termos de Uso</a><a href="privacidade.html">Política de Privacidade</a></nav>
+
+<h1>Post a video to TikTok</h1>
+<p class="muted">Internal tool of the Hipótese Zero channel. It posts the channel's own videos to the channel's own TikTok account, only after the account owner connects TikTok and confirms every setting below.</p>
+
+<div id="step-connect" class="card">
+  <h2>1. Connect your TikTok account</h2>
+  <p>You will be sent to TikTok to log in and choose what this tool may do: read your basic profile (to show which account will post) and post videos you confirm here.</p>
+  <button id="btn-connect">Continue with TikTok</button>
+  <p id="connect-msg" class="muted"></p>
+</div>
+
+<div id="step-post" class="hidden">
+  <div class="card">
+    <h2>2. Posting to</h2>
+    <div class="creator"><img id="c-avatar" alt=""><div><strong id="c-nick"></strong><br><span class="muted">@<span id="c-user"></span></span></div>
+    <button class="sec" id="btn-logout" style="margin-left:auto">Disconnect</button></div>
+    <p id="c-limit" class="err hidden"></p>
+  </div>
+
+  <div class="card">
+    <h2>3. Video</h2>
+    <label for="sel-video">Choose the video</label>
+    <select id="sel-video"></select>
+    <p class="muted" id="v-dur"></p>
+    <video id="v-preview" controls playsinline></video>
+    <label for="caption">Caption (you can edit it)</label>
+    <textarea id="caption" rows="3" maxlength="2200"></textarea>
+  </div>
+
+  <div class="card">
+    <h2>4. Settings</h2>
+    <label for="privacy">Who can view this video</label>
+    <select id="privacy"><option value="" selected disabled>Select privacy…</option></select>
+    <p class="muted">Required. Nothing is selected by default.</p>
+
+    <label>Allow users to</label>
+    <div class="row">
+      <label><input type="checkbox" id="allow-comment"> Comment</label>
+      <label><input type="checkbox" id="allow-duet"> Duet</label>
+      <label><input type="checkbox" id="allow-stitch"> Stitch</label>
+    </div>
+
+    <label><input type="checkbox" id="aigc" checked> This video is AI-generated content (adds TikTok's AI-generated label)</label>
+
+    <label><input type="checkbox" id="disclose"> Disclose video content (promotional / paid partnership)</label>
+    <div id="disclose-box" class="hidden" style="margin-left:24px">
+      <label><input type="checkbox" id="your-brand"> Your brand — you are promoting yourself or your own business</label>
+      <label><input type="checkbox" id="branded"> Branded content — you are promoting another brand or a third party</label>
+      <p id="disclose-label" class="muted"></p>
+    </div>
+  </div>
+
+  <div class="card">
+    <p id="consent">By posting, you agree to TikTok's <a href="https://www.tiktok.com/legal/page/global/music-usage-confirmation/en" target="_blank" rel="noopener">Music Usage Confirmation</a>.</p>
+    <button id="btn-post" disabled>Post to TikTok</button>
+    <p id="post-msg" class="muted"></p>
+  </div>
+</div>
+
+<footer class="muted" style="margin-top:32px">Contato: canal.hipotese.zer0@gmail.com · <a href="termos.html">Termos de Uso</a> · <a href="privacidade.html">Política de Privacidade</a></footer>
+</main>
+<script src="config.js"></script>
+<script>
+const C = window.HZ_CONFIG, $ = id => document.getElementById(id);
+let creator = null, videos = [];
+const store = { get: k => { try { return localStorage.getItem(k) } catch (e) { return null } },
+                set: (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v) } catch (e) {} } };
+
+async function server(action, data) {
+  const r = await fetch(C.SERVER_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                                        body: JSON.stringify({ action, ...data }) });
+  const j = await r.json();
+  if (!j.ok) throw new Error(j.error || 'server error');
+  return j;
+}
+
+$('btn-connect').onclick = () => {
+  const state = crypto.getRandomValues(new Uint32Array(4)).join('');
+  try { sessionStorage.setItem('hz_state', state) } catch (e) {}
+  const q = new URLSearchParams({ client_key: C.CLIENT_KEY, scope: C.SCOPES, response_type: 'code',
+                                  redirect_uri: C.REDIRECT_URI, state, disable_auto_auth: '1' });
+  location.href = 'https://www.tiktok.com/v2/auth/authorize/?' + q;
+};
+
+$('btn-logout').onclick = async () => {
+  const s = store.get('hz_session'); store.set('hz_session', null);
+  if (s) { try { await server('logout', { session: s }) } catch (e) {} }
+  location.href = 'publicar.html';
+};
+
+async function handleCallback() {
+  const q = new URLSearchParams(location.search);
+  if (q.get('error')) { $('connect-msg').textContent = 'TikTok authorization was cancelled: ' + q.get('error_description'); return false; }
+  if (!q.get('code')) return false;
+  let expected = null; try { expected = sessionStorage.getItem('hz_state') } catch (e) {}
+  if (expected && q.get('state') !== expected) { $('connect-msg').textContent = 'Security check failed (state). Please try again.'; return false; }
+  $('connect-msg').textContent = 'Connecting…';
+  const j = await server('exchange', { code: q.get('code') });
+  store.set('hz_session', j.session);
+  history.replaceState(null, '', 'publicar.html');
+  return true;
+}
+
+function fillPrivacy(opts) {
+  const names = { PUBLIC_TO_EVERYONE: 'Everyone', MUTUAL_FOLLOW_FRIENDS: 'Friends', FOLLOWER_OF_CREATOR: 'Followers', SELF_ONLY: 'Only me' };
+  for (const o of opts) { const el = document.createElement('option'); el.value = o; el.textContent = names[o] || o; $('privacy').appendChild(el); }
+}
+
+function setToggle(id, disabledByCreator) {
+  const el = $(id); el.checked = false;
+  if (disabledByCreator) { el.disabled = true; el.parentElement.title = 'Disabled in your TikTok settings'; el.parentElement.classList.add('muted'); }
+}
+
+function selectedVideo() { return videos[$('sel-video').selectedIndex]; }
+
+function showVideo() {
+  const v = selectedVideo(); if (!v) return;
+  $('v-preview').src = 'videos/' + v.file; $('v-preview').poster = 'videos/' + v.cover;
+  $('caption').value = v.caption; $('aigc').checked = !!v.aigc;
+  const max = creator.max_video_post_duration_sec;
+  $('v-dur').textContent = `Duration: ${v.duration_s}s (your account allows up to ${max}s)`;
+  $('v-dur').className = v.duration_s > max ? 'err' : 'muted';
+  validate();
+}
+
+function validate() {
+  const d = $('disclose').checked, yb = $('your-brand').checked, bc = $('branded').checked;
+  $('disclose-box').classList.toggle('hidden', !d);
+  const priv = $('privacy');
+  const selfOnly = [...priv.options].find(o => o.value === 'SELF_ONLY');
+  if (selfOnly) { selfOnly.disabled = d && bc; selfOnly.textContent = d && bc ? 'Only me (not available for branded content)' : 'Only me'; if (d && bc && priv.value === 'SELF_ONLY') priv.value = ''; }
+  $('disclose-label').textContent = !d ? '' : bc ? "Your video will be labeled as 'Paid partnership'." : yb ? "Your video will be labeled as 'Promotional content'." : 'Choose at least one option.';
+  $('consent').innerHTML = d && bc
+    ? "By posting, you agree to TikTok's <a href='https://www.tiktok.com/legal/page/global/bc-policy/en' target='_blank' rel='noopener'>Branded Content Policy</a> and <a href='https://www.tiktok.com/legal/page/global/music-usage-confirmation/en' target='_blank' rel='noopener'>Music Usage Confirmation</a>."
+    : "By posting, you agree to TikTok's <a href='https://www.tiktok.com/legal/page/global/music-usage-confirmation/en' target='_blank' rel='noopener'>Music Usage Confirmation</a>.";
+  const v = selectedVideo();
+  const ok = creator && v && priv.value && v.duration_s <= creator.max_video_post_duration_sec && (!d || yb || bc) && $('caption').value.trim();
+  $('btn-post').disabled = !ok;
+  $('btn-post').title = d && !yb && !bc ? 'You need to indicate if your content promotes yourself, a third party, or both.' : '';
+}
+
+async function post() {
+  const v = selectedVideo(), s = store.get('hz_session');
+  $('btn-post').disabled = true; $('post-msg').className = 'muted'; $('post-msg').textContent = 'Sending to TikTok…';
+  try {
+    const j = await server('publish', { session: s, video: v.file, caption: $('caption').value, privacy_level: $('privacy').value,
+      allow_comment: $('allow-comment').checked, allow_duet: $('allow-duet').checked, allow_stitch: $('allow-stitch').checked,
+      is_aigc: $('aigc').checked, your_brand: $('disclose').checked && $('your-brand').checked, branded_content: $('disclose').checked && $('branded').checked });
+    $('post-msg').textContent = 'Sent! TikTok is processing your video. It may take a few minutes to appear on your profile.';
+    for (let i = 0; i < 40; i++) {
+      await new Promise(r => setTimeout(r, 6000));
+      const st = (await server('status', { session: s, publish_id: j.publish_id })).status;
+      if (st.status === 'PUBLISH_COMPLETE') { $('post-msg').className = 'ok'; $('post-msg').textContent = 'Posted! Open TikTok to see it on your profile.'; return; }
+      if (st.status === 'FAILED') throw new Error(st.fail_reason || 'failed');
+      $('post-msg').textContent = 'TikTok is processing your video (' + st.status + ')… It may take a few minutes.';
+    }
+  } catch (e) { $('post-msg').className = 'err'; $('post-msg').textContent = 'Could not post: ' + e.message; validate(); }
+}
+
+async function init() {
+  try {
+    await handleCallback();
+    const s = store.get('hz_session');
+    if (!s) return;
+    const c = (await server('creator', { session: s })).creator;
+    creator = c;
+    $('c-avatar').src = c.creator_avatar_url; $('c-nick').textContent = c.creator_nickname; $('c-user').textContent = c.creator_username;
+    fillPrivacy(c.privacy_level_options || []);
+    setToggle('allow-comment', c.comment_disabled); setToggle('allow-duet', c.duet_disabled); setToggle('allow-stitch', c.stitch_disabled);
+    videos = await (await fetch('videos/manifest.json')).json();
+    for (const v of videos) { const o = document.createElement('option'); o.textContent = v.title; $('sel-video').appendChild(o); }
+    $('step-connect').classList.add('hidden'); $('step-post').classList.remove('hidden');
+    showVideo();
+  } catch (e) {
+    $('connect-msg').className = 'err';
+    $('connect-msg').textContent = /sessao|spam_risk|reached/.test(e.message) ? 'Please connect again. (' + e.message + ')' : 'Error: ' + e.message;
+    if (/sessao/.test(e.message)) store.set('hz_session', null);
+  }
+}
+
+['privacy', 'disclose', 'your-brand', 'branded', 'caption'].forEach(id => $(id).addEventListener('input', validate));
+['disclose', 'your-brand', 'branded'].forEach(id => $(id).addEventListener('change', validate));
+$('sel-video').addEventListener('change', showVideo);
+$('btn-post').onclick = post;
+init();
+</script></body></html>
